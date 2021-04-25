@@ -58,11 +58,16 @@ server.get("/weather", (req, res) => {
 });
 
 server.get("*", (req, res) => {
+  // let errObj = {
+  //   status: 404,
+  //   resText: "sorry! this page not found",
+  // };
+  // res.status(404).send(errObj);
   let errObj = {
-    status: 404,
+    status: 500,
     resText: "sorry! this page not found",
   };
-  res.status(404).send(errObj);
+  res.status(500).send(errObj);
 });
 
 server.listen(PORT, () => {
