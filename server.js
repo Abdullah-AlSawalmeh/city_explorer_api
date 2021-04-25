@@ -23,22 +23,39 @@ server.get("/data", (req, res) => {
   res.status(200).send("Hi from the data page, I am the server !!!");
 });
 
-server.get("/location", (req, res) => {
-  //fetch the data that inside locaion.json file
-  let locationData = require("./data/location.json");
-
-  let locationRes = new Location(locationData);
-  console.log(locationRes);
-
-  res.send(locationRes);
-});
-
+//////////////////// Location
 function Location(locData) {
   this.search_query = "Lynnwood";
   this.formatted_query = locData[0].display_name;
   this.latitude = locData[0].lat;
   this.longitude = locData[0].lon;
 }
+server.get("/location", (req, res) => {
+  //fetch the data that inside locaion.json file
+  let locationData = require("./data/location.json");
+
+  let locationRes = new Location(locationData);
+  // console.log(locationRes);
+
+  res.send(locationRes);
+});
+
+//////////////////// weather
+function Weather(WeaData) {
+  this.forecast = WeaData.weather.description;
+  this.time = WeaData.datetime;
+}
+server.get("/weather", (req, res) => {
+  //fetch the data that inside locaion.json file
+
+  let weatherData = require("./data/weather.json");
+  let weatherObj = [];
+  weatherData.data.forEach(function (element) {
+    let weatherRes = new Weather(element);
+    weatherObj.push(weatherRes);
+  });
+  res.send(weatherObj);
+});
 
 server.get("*", (req, res) => {
   let errObj = {
