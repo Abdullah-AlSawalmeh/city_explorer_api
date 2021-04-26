@@ -72,7 +72,8 @@ function getWeather(req, res) {
       const weatherObj = wData.data.map(function (element, i) {
         return new Weather(element);
       });
-      res.send(weatherObj.splice(0, 8));
+      weatherObjSpliced = weatherObj.splice(0, 8);
+      res.send(weatherObjSpliced);
     })
     .catch((error) => {
       console.log(error);
