@@ -62,11 +62,22 @@ function Weather(WeaData) {
 }
 function getWeather(req, res) {
   //fetch the data that inside locaion.json file
-  let weatherData = require("./data/weather.json");
-  const weatherObj = weatherData.data.map(function (element) {
-    return new Weather(element);
-  });
-  res.send(weatherObj);
+  let cityName = req.query.city;
+  let key = process.env.WEATHER_API_KEY;
+  let locURL = `https://api.weatherbit.io/v2.0/forecast/daily?city=${cityName}&key=${key}`;
+  superagent
+    .get(locURL) //send a request locatioIQ API
+    .then((WeaData) => {
+      let wData = WeaData.body;
+      const weatherObj = wData.data.map(function (element, i) {
+        return new Weather(element);
+      });
+      res.send(weatherObj.splice(0, 8));
+    })
+    .catch((error) => {
+      console.log(error);
+      res.send(error);
+    });
 }
 server.get("/weather", getWeather);
 
