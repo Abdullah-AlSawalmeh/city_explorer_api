@@ -30,7 +30,7 @@ function Location(locData) {
   this.latitude = locData[0].lat;
   this.longitude = locData[0].lon;
 }
-server.get("/location", (req, res) => {
+function getLocation(req, res) {
   //fetch the data that inside locaion.json file
   let locationData = require("./data/location.json");
 
@@ -38,38 +38,36 @@ server.get("/location", (req, res) => {
   // console.log(locationRes);
 
   res.send(locationRes);
-});
+}
+server.get("/location", getLocation);
 
 //////////////////// weather
 function Weather(WeaData) {
   this.forecast = WeaData.weather.description;
   this.time = new Date(WeaData.datetime).toString().slice(0, 15);
 }
-
-server.get("/weather", (req, res) => {
+function getWeather(req, res) {
   //fetch the data that inside locaion.json file
   let weatherData = require("./data/weather.json");
-  let weatherObj = [];
-  weatherData.data.forEach(function (element) {
-    let weatherRes = new Weather(element);
-    weatherObj.push(weatherRes);
+  const weatherObj = weatherData.data.map(function (element) {
+    return new Weather(element);
   });
   res.send(weatherObj);
-});
+}
+server.get("/weather", getWeather);
 
-server.get("*", (req, res) => {
-  // let errObj = {
-  //   status: 404,
-  //   resText: "sorry! this page not found",
-  // };
-  // res.status(404).send(errObj);
+//////////////////// general
+function getGeneral(req, res) {
+  //fetch the data that inside locaion.json file
   let errObj = {
     status: 500,
     resText: "sorry! this page not found",
   };
   res.status(500).send(errObj);
-});
+}
+server.get("*", getGeneral);
 
+//////////////////// listening
 server.listen(PORT, () => {
   console.log(`listening on port ${PORT}`);
 });
