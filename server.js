@@ -43,11 +43,11 @@ server.get("/location", (req, res) => {
 //////////////////// weather
 function Weather(WeaData) {
   this.forecast = WeaData.weather.description;
-  this.time = WeaData.datetime;
+  this.time = new Date(WeaData.datetime).toString().slice(0, 15);
 }
+
 server.get("/weather", (req, res) => {
   //fetch the data that inside locaion.json file
-
   let weatherData = require("./data/weather.json");
   let weatherObj = [];
   weatherData.data.forEach(function (element) {
