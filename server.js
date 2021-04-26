@@ -55,7 +55,7 @@ function getLocation(req, res) {
 }
 server.get("/location", getLocation);
 
-//////////////////// weather
+//////////////////// Weather
 function Weather(WeaData) {
   this.forecast = WeaData.weather.description;
   this.time = new Date(WeaData.datetime).toString().slice(0, 15);
@@ -82,7 +82,7 @@ function getWeather(req, res) {
 }
 server.get("/weather", getWeather);
 
-//////////////////// parks
+//////////////////// Parks
 function Park(parkData) {
   this.name = parkData.fullName;
   this.address = `${parkData.addresses[0].city} , ${parkData.addresses[0].line1} , ${parkData.addresses[0].line2}`;
@@ -102,7 +102,6 @@ function getParks(req, res) {
       const parksObj = pData.data.map(function (element, i) {
         return new Park(element);
       });
-      // weatherObjSpliced = weatherObj.splice(0, 8);
       res.send(parksObj);
     })
     .catch((error) => {
