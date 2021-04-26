@@ -82,6 +82,36 @@ function getWeather(req, res) {
 }
 server.get("/weather", getWeather);
 
+//////////////////// parks
+function Park(parkData) {
+  this.name = parkData.fullName;
+  this.address = `${parkData.addresses[0].city} , ${parkData.addresses[0].line1} , ${parkData.addresses[0].line2}`;
+  this.fee = parkData.entranceFees[0].cost;
+  this.description = parkData.description;
+  this.url = parkData.url;
+}
+function getParks(req, res) {
+  //fetch the data that inside locaion.json file
+  let cityName = req.query.city;
+  let key = process.env.PARKS_API_KEY;
+  let locURL = `https://developer.nps.gov/api/v1/parks?q=${cityName}&limit=10&api_key=${key}`;
+  superagent
+    .get(locURL) //send a request locatioIQ API
+    .then((parkData) => {
+      let pData = parkData.body;
+      const parksObj = pData.data.map(function (element, i) {
+        return new Park(element);
+      });
+      // weatherObjSpliced = weatherObj.splice(0, 8);
+      res.send(parksObj);
+    })
+    .catch((error) => {
+      console.log(error);
+      res.send(error);
+    });
+}
+server.get("/parks", getParks);
+
 //////////////////// general
 function getGeneral(req, res) {
   //fetch the data that inside locaion.json file
