@@ -9,6 +9,7 @@ const express = require("express");
 require("dotenv").config();
 
 const cors = require("cors");
+const superagent = require("superagent");
 
 const server = express();
 
@@ -24,20 +25,33 @@ server.get("/data", (req, res) => {
 });
 
 //////////////////// Location
-function Location(locData) {
-  this.search_query = "Lynnwood";
+function Location(cityName, locData) {
+  this.search_query = cityName;
   this.formatted_query = locData[0].display_name;
   this.latitude = locData[0].lat;
   this.longitude = locData[0].lon;
 }
 function getLocation(req, res) {
   //fetch the data that inside locaion.json file
-  let locationData = require("./data/location.json");
+  // let locationData = require("./data/location.json");
+  let cityName = req.query.city;
+  let key = process.env.GEOCODE_API_KEY;
+  let locURL = `https://us1.locationiq.com/v1/search.php?key=${key}&q=${cityName}&format=json`;
+  superagent
+    .get(locURL) //send a request locatioIQ API
+    .then((geoData) => {
+      // console.log(geoData.body);
+      let gData = geoData.body;
+      let locationData = new Location(cityName, gData);
+      res.send(locationData);
+      // console.log('inside superagent');
+    })
+    .catch((error) => {
+      console.log(error);
+      res.send(error);
+    });
 
-  let locationRes = new Location(locationData);
-  // console.log(locationRes);
-
-  res.send(locationRes);
+  // res.send(locationRes);
 }
 server.get("/location", getLocation);
 
