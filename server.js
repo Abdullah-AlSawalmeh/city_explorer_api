@@ -13,6 +13,10 @@ server.use(cors()); //open for any request from any client
 
 const superagent = require("superagent");
 require("dotenv").config();
+const pg = require("pg");
+const client = new pg.Client({
+  connectionString: process.env.DATABASE_URL,
+});
 
 const PORT = process.env.PORT || 5000;
 // take the port from .env local file
@@ -32,28 +36,67 @@ function Location(cityName, locData) {
 }
 function getLocation(req, res) {
   //fetch the data that inside locaion.json file
-  // let locationData = require("./data/location.json");
-  // let cityName = req.query.city;
   let cityName = req.query.city;
-  // console.log(cityName);
-  let key = process.env.GEOCODE_API_KEY;
-  let locURL = `https://us1.locationiq.com/v1/search.php?key=${key}&q=${cityName}&format=json`;
-  superagent
-    .get(locURL) //send a request locatioIQ API
-    .then((geoData) => {
-      // console.log(geoData.body);
-      let gData = geoData.body;
-      let locationData = new Location(cityName, gData);
-      res.send(locationData);
-      // console.log('inside superagent');
-    })
-    .catch((error) => {
-      console.log(error);
-      res.send(error);
-    });
+  if (!cityName) {
+    res.send("Put right url");
+  } else {
+    let SQL1 = `SELECT * FROM locations;`;
+    client
+      .query(SQL1)
+      .then((result1) => {
+        let allCitiesInDb = result1.rows.map((element) => {
+          return element.search_query;
+        });
 
-  // res.send(locationRes);
+        if (allCitiesInDb.includes(cityName)) {
+          let SQL2 = `SELECT * FROM locations WHERE search_query='${cityName}';`;
+          client
+            .query(SQL2)
+            .then((result2) => {
+              res.send(result2.rows);
+            })
+            .catch((error) => {
+              console.log(error);
+              res.send(error);
+            });
+        } else {
+          let key = process.env.GEOCODE_API_KEY;
+          let locURL = `https://us1.locationiq.com/v1/search.php?key=${key}&q=${cityName}&format=json`;
+          superagent
+            .get(locURL) //send a request locatioIQ API
+            .then((geoData) => {
+              let gData = geoData.body;
+              let locationData = new Location(cityName, gData);
+              let SQL3 = `INSERT INTO locations (search_query,formatted_query,latitude,longitude) VALUES ($1,$2,$3,$4) RETURNING *;`;
+              let safeValues = [
+                locationData.search_query,
+                locationData.formatted_query,
+                locationData.latitude,
+                locationData.longitude,
+              ];
+              client
+                .query(SQL3, safeValues)
+                .then((result) => {
+                  res.send(result.rows);
+                })
+                .catch((error) => {
+                  console.log(error);
+                  res.send(error);
+                });
+            })
+            .catch((error) => {
+              console.log(error);
+              res.send(error);
+            });
+        }
+      })
+      .catch((error) => {
+        console.log(error);
+        res.send(error);
+      });
+  }
 }
+
 server.get("/location", getLocation);
 
 //////////////////// Weather
@@ -116,6 +159,34 @@ function getParks(req, res) {
 }
 server.get("/parks", getParks);
 
+///////////////////// Test DataBase
+function addDataHandler(req, res) {
+  // console.log(req.query);
+  let firstName = req.query.first;
+  let lastName = req.query.last;
+  let SQL1 = `SELECT firstName FROM people;`;
+  client.query(SQL1).then((result) => {
+    // result.rows.forEach((element) => {
+    //   if (element.firstname === firstName) {
+    //     console.log("I`am here");
+    //   }
+    //   // console.log(element.firstname);
+    // });
+    res.send(result.rows);
+  });
+  // let SQL = `INSERT INTO people (firstName,lastName) VALUES ($1,$2) RETURNING *;`;
+  // let safeValues = [firstName, lastName];
+  // client
+  //   .query(SQL, safeValues)
+  //   .then((result) => {
+  //     res.send(result.rows);
+  //   })
+  //   .catch((error) => {
+  //     res.send(error);
+  //   });
+}
+server.get("/add", addDataHandler);
+
 //////////////////// general
 function getGeneral(req, res) {
   //fetch the data that inside locaion.json file
@@ -128,6 +199,6 @@ function getGeneral(req, res) {
 server.get("*", getGeneral);
 
 //////////////////// listening
-server.listen(PORT, () => {
-  console.log(`listening on port ${PORT}`);
+client.connect().then(() => {
+  server.listen(PORT, () => console.log(`listening on ${PORT}`));
 });
