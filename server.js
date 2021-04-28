@@ -6,19 +6,18 @@
 //3- nodemon
 
 const express = require("express");
-require("dotenv").config();
+const server = express();
 
 const cors = require("cors");
-const superagent = require("superagent");
+server.use(cors()); //open for any request from any client
 
-const server = express();
+const superagent = require("superagent");
+require("dotenv").config();
 
 const PORT = process.env.PORT || 5000;
 // take the port from .env local file
 // If I am in the Heroku it will take the port from the .env file that inside the Heroku
 // 5000
-
-server.use(cors()); //open for any request from any client
 
 server.get("/data", (req, res) => {
   res.status(200).send("Hi from the data page, I am the server !!!");
@@ -34,7 +33,9 @@ function Location(cityName, locData) {
 function getLocation(req, res) {
   //fetch the data that inside locaion.json file
   // let locationData = require("./data/location.json");
+  // let cityName = req.query.city;
   let cityName = req.query.city;
+  // console.log(cityName);
   let key = process.env.GEOCODE_API_KEY;
   let locURL = `https://us1.locationiq.com/v1/search.php?key=${key}&q=${cityName}&format=json`;
   superagent
@@ -62,9 +63,12 @@ function Weather(WeaData) {
 }
 function getWeather(req, res) {
   //fetch the data that inside locaion.json file
-  let cityName = req.query.city;
+  let cityName = req.query.search_query;
+  // res.send(cityName);
+
+  console.log(cityName);
   let key = process.env.WEATHER_API_KEY;
-  let locURL = `https://api.weatherbit.io/v2.0/forecast/daily?city=${cityName}&key=${key}`;
+  let locURL = `https://api.weatherbit.io/v2.0/forecast/daily?city=${cityName}&days=8&key=${key}`;
   superagent
     .get(locURL) //send a request locatioIQ API
     .then((WeaData) => {
@@ -72,8 +76,8 @@ function getWeather(req, res) {
       const weatherObj = wData.data.map(function (element, i) {
         return new Weather(element);
       });
-      weatherObjSpliced = weatherObj.splice(0, 8);
-      res.send(weatherObjSpliced);
+      // weatherObjSpliced = weatherObj.splice(0, 8);
+      res.send(weatherObj);
     })
     .catch((error) => {
       console.log(error);
@@ -92,9 +96,10 @@ function Park(parkData) {
 }
 function getParks(req, res) {
   //fetch the data that inside locaion.json file
-  let cityName = req.query.city;
+  let cityName = req.query.search_query;
+  // console.log(cityName);
   let key = process.env.PARKS_API_KEY;
-  let locURL = `https://developer.nps.gov/api/v1/parks?q=${cityName}&limit=10&api_key=${key}`;
+  let locURL = `https://developer.nps.gov/api/v1/parks?q=${cityName}&api_key=${key}`;
   superagent
     .get(locURL) //send a request locatioIQ API
     .then((parkData) => {
