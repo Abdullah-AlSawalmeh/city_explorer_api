@@ -6,23 +6,19 @@
 //3- nodemon
 
 const express = require("express");
+const superagent = require("superagent");
+const cors = require("cors");
+const pg = require("pg");
 require("dotenv").config();
 
-const cors = require("cors");
-const superagent = require("superagent");
-
 const server = express();
-
-const PORT = process.env.PORT || 5000;
-// take the port from .env local file
-// If I am in the Heroku it will take the port from the .env file that inside the Heroku
-// 5000
-
+const client = new pg.Client({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 server.use(cors()); //open for any request from any client
 
-server.get("/data", (req, res) => {
-  res.status(200).send("Hi from the data page, I am the server !!!");
-});
+const PORT = process.env.PORT || 5000;
 
 //////////////////// Location
 function Location(cityName, locData) {
@@ -31,27 +27,59 @@ function Location(cityName, locData) {
   this.latitude = locData[0].lat;
   this.longitude = locData[0].lon;
 }
+/////// Method 2 for lab08 >>> Method 1 is below, method 1 consume memory
 function getLocation(req, res) {
   //fetch the data that inside locaion.json file
-  // let locationData = require("./data/location.json");
   let cityName = req.query.city;
-  let key = process.env.GEOCODE_API_KEY;
-  let locURL = `https://us1.locationiq.com/v1/search.php?key=${key}&q=${cityName}&format=json`;
-  superagent
-    .get(locURL) //send a request locatioIQ API
-    .then((geoData) => {
-      // console.log(geoData.body);
-      let gData = geoData.body;
-      let locationData = new Location(cityName, gData);
-      res.send(locationData);
-      // console.log('inside superagent');
-    })
-    .catch((error) => {
-      console.log(error);
-      res.send(error);
-    });
-
-  // res.send(locationRes);
+  if (!cityName) {
+    res.send(
+      "Put right url like this : https://abdullah-city-explorer-api.herokuapp.com/location?city=texas"
+    );
+  } else {
+    let SQL1 = `SELECT * FROM locations WHERE search_query=$1;`;
+    client
+      .query(SQL1, [cityName])
+      .then((result1) => {
+        if (result1.rows.length) {
+          console.log("This from the Database");
+          res.send(result1.rows);
+        } else {
+          console.log("This from the API");
+          let key = process.env.GEOCODE_API_KEY;
+          let locURL = `https://us1.locationiq.com/v1/search.php?key=${key}&q=${cityName}&format=json`;
+          superagent
+            .get(locURL) //send a request locatioIQ API
+            .then((geoData) => {
+              let gData = geoData.body;
+              let locationData = new Location(cityName, gData);
+              let SQL3 = `INSERT INTO locations (search_query,formatted_query,latitude,longitude) VALUES ($1,$2,$3,$4) RETURNING *;`;
+              let safeValues = [
+                locationData.search_query,
+                locationData.formatted_query,
+                locationData.latitude,
+                locationData.longitude,
+              ];
+              client
+                .query(SQL3, safeValues)
+                .then((result3) => {
+                  res.send(result3.rows);
+                })
+                .catch((error) => {
+                  console.log(error);
+                  res.send(error);
+                });
+            })
+            .catch((error) => {
+              console.log(error);
+              res.send(error);
+            });
+        }
+      })
+      .catch((error) => {
+        console.log(error);
+        res.send(error);
+      });
+  }
 }
 server.get("/location", getLocation);
 
@@ -62,9 +90,9 @@ function Weather(WeaData) {
 }
 function getWeather(req, res) {
   //fetch the data that inside locaion.json file
-  let cityName = req.query.city;
+  let cityName = req.query.search_query;
   let key = process.env.WEATHER_API_KEY;
-  let locURL = `https://api.weatherbit.io/v2.0/forecast/daily?city=${cityName}&key=${key}`;
+  let locURL = `https://api.weatherbit.io/v2.0/forecast/daily?city=${cityName}&days=8&key=${key}`;
   superagent
     .get(locURL) //send a request locatioIQ API
     .then((WeaData) => {
@@ -72,8 +100,8 @@ function getWeather(req, res) {
       const weatherObj = wData.data.map(function (element, i) {
         return new Weather(element);
       });
-      weatherObjSpliced = weatherObj.splice(0, 8);
-      res.send(weatherObjSpliced);
+      // weatherObjSpliced = weatherObj.splice(0, 8);
+      res.send(weatherObj);
     })
     .catch((error) => {
       console.log(error);
@@ -92,9 +120,10 @@ function Park(parkData) {
 }
 function getParks(req, res) {
   //fetch the data that inside locaion.json file
-  let cityName = req.query.city;
+  let cityName = req.query.search_query;
+  // console.log(cityName);
   let key = process.env.PARKS_API_KEY;
-  let locURL = `https://developer.nps.gov/api/v1/parks?q=${cityName}&limit=10&api_key=${key}`;
+  let locURL = `https://developer.nps.gov/api/v1/parks?q=${cityName}&api_key=${key}`;
   superagent
     .get(locURL) //send a request locatioIQ API
     .then((parkData) => {
@@ -111,6 +140,34 @@ function getParks(req, res) {
 }
 server.get("/parks", getParks);
 
+///////////////////// Test DataBase
+function addDataHandler(req, res) {
+  // console.log(req.query);
+  let firstName = req.query.first;
+  let lastName = req.query.last;
+  let SQL1 = `SELECT firstName FROM people;`;
+  client.query(SQL1).then((result) => {
+    // result.rows.forEach((element) => {
+    //   if (element.firstname === firstName) {
+    //     console.log("I`am here");
+    //   }
+    //   // console.log(element.firstname);
+    // });
+    res.send(result.rows);
+  });
+  // let SQL = `INSERT INTO people (firstName,lastName) VALUES ($1,$2) RETURNING *;`;
+  // let safeValues = [firstName, lastName];
+  // client
+  //   .query(SQL, safeValues)
+  //   .then((result) => {
+  //     res.send(result.rows);
+  //   })
+  //   .catch((error) => {
+  //     res.send(error);
+  //   });
+}
+server.get("/add", addDataHandler);
+
 //////////////////// general
 function getGeneral(req, res) {
   //fetch the data that inside locaion.json file
@@ -123,6 +180,70 @@ function getGeneral(req, res) {
 server.get("*", getGeneral);
 
 //////////////////// listening
-server.listen(PORT, () => {
-  console.log(`listening on port ${PORT}`);
+client.connect().then(() => {
+  server.listen(PORT, () => console.log(`listening on ${PORT}`));
 });
+
+/////// Method 1 for lab08
+// function getLocation(req, res) {
+//   //fetch the data that inside locaion.json file
+//   let cityName = req.query.city;
+//   if (!cityName) {
+//     res.send("Put right url");
+//   } else {
+//     let SQL1 = `SELECT * FROM locations;`;
+//     client
+//       .query(SQL1)
+//       .then((result1) => {
+//         let allCitiesInDb = result1.rows.map((element) => {
+//           return element.search_query;
+//         });
+
+//         if (allCitiesInDb.includes(cityName)) {
+//           let SQL2 = `SELECT * FROM locations WHERE search_query='${cityName}';`;
+//           client
+//             .query(SQL2)
+//             .then((result2) => {
+//               res.send(result2.rows);
+//             })
+//             .catch((error) => {
+//               console.log(error);
+//               res.send(error);
+//             });
+//         } else {
+//           let key = process.env.GEOCODE_API_KEY;
+//           let locURL = `https://us1.locationiq.com/v1/search.php?key=${key}&q=${cityName}&format=json`;
+//           superagent
+//             .get(locURL) //send a request locatioIQ API
+//             .then((geoData) => {
+//               let gData = geoData.body;
+//               let locationData = new Location(cityName, gData);
+//               let SQL3 = `INSERT INTO locations (search_query,formatted_query,latitude,longitude) VALUES ($1,$2,$3,$4) RETURNING *;`;
+//               let safeValues = [
+//                 locationData.search_query,
+//                 locationData.formatted_query,
+//                 locationData.latitude,
+//                 locationData.longitude,
+//               ];
+//               client
+//                 .query(SQL3, safeValues)
+//                 .then((result) => {
+//                   res.send(result.rows);
+//                 })
+//                 .catch((error) => {
+//                   console.log(error);
+//                   res.send(error);
+//                 });
+//             })
+//             .catch((error) => {
+//               console.log(error);
+//               res.send(error);
+//             });
+//         }
+//       })
+//       .catch((error) => {
+//         console.log(error);
+//         res.send(error);
+//       });
+//   }
+// }
