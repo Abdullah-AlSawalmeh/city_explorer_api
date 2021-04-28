@@ -182,7 +182,8 @@ function MVS(MVSData) {
 function moviesDataHandler(req, res) {
   let cityName = req.query.search_query;
   let key = process.env.MOVIE_API_KEY;
-  let locURL = `https://api.themoviedb.org/3/movie/top_rated/?region=${cityName}&api_key=${key}`;
+  let locURL = `https://api.themoviedb.org/3/search/movie?api_key=${key}&query=${cityName}`;
+  // let locURL = `https://api.themoviedb.org/3/movie/top_rated/?region=${cityName}&api_key=${key}`;
   superagent
     .get(locURL) //send a request locatioIQ API
     .then((mvsData) => {
@@ -199,6 +200,34 @@ function moviesDataHandler(req, res) {
     });
 }
 server.get("/movies", moviesDataHandler);
+///////////////////// Movies
+function YLP(YLPData) {
+  this.name = YLPData.name;
+  this.image_url = YLPData.image_url;
+  this.price = YLPData.price;
+  this.rating = YLPData.rating;
+  this.url = YLPData.url;
+}
+function yelpDataHandler(req, res) {
+  let cityName = req.query.search_query;
+  let key = process.env.YELP_API_KEY;
+  let pageNumber = req.query.page;
+  let limit = 5;
+  let offset = (pageNumber - 1) * limit + 1;
+  let url = `https://api.yelp.com/v3/businesses/search?location=${cityName}&limit=${limit}&offset=${offset}`;
+  superagent
+    .get(url)
+    .set("Authorization", `Bearer ${key}`)
+    .then((ylpData) => {
+      let yData = ylpData.body;
+      console.log(yData);
+      const yelpsObj = yData.businesses.map((element) => {
+        return new YLP(element);
+      });
+      res.send(yelpsObj);
+    });
+}
+server.get("/yelp", yelpDataHandler);
 
 //////////////////// general
 function getGeneral(req, res) {
