@@ -14,7 +14,7 @@ require("dotenv").config();
 const server = express();
 const client = new pg.Client({
   connectionString: process.env.DATABASE_URL,
-  // ssl: { rejectUnauthorized: false },
+  ssl: { rejectUnauthorized: false },
 });
 server.use(cors()); //open for any request from any client
 
