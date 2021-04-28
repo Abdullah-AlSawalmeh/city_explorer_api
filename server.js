@@ -14,7 +14,7 @@ require("dotenv").config();
 const server = express();
 const client = new pg.Client({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  // ssl: { rejectUnauthorized: false },
 });
 server.use(cors()); //open for any request from any client
 
@@ -167,6 +167,38 @@ function addDataHandler(req, res) {
   //   });
 }
 server.get("/add", addDataHandler);
+
+///////////////////// Movies
+function MVS(MVSData) {
+  this.title = MVSData.title;
+  this.overview = MVSData.overview;
+  this.average_votes = MVSData.vote_average;
+  this.total_votes = MVSData.vote_count;
+  this.image_url = MVSData.poster_path;
+  this.popularity = MVSData.popularity;
+  this.released_on = MVSData.release_date;
+}
+
+function moviesDataHandler(req, res) {
+  let cityName = req.query.search_query;
+  let key = process.env.MOVIE_API_KEY;
+  let locURL = `https://api.themoviedb.org/3/movie/top_rated/?region=${cityName}&api_key=${key}`;
+  superagent
+    .get(locURL) //send a request locatioIQ API
+    .then((mvsData) => {
+      let mData = mvsData.body;
+      console.log(mData);
+      const mvsObj = mData.results.map(function (element, i) {
+        return new MVS(element);
+      });
+      res.send(mvsObj);
+    })
+    .catch((error) => {
+      console.log(error);
+      res.send(error);
+    });
+}
+server.get("/movies", moviesDataHandler);
 
 //////////////////// general
 function getGeneral(req, res) {
