@@ -6,27 +6,19 @@
 //3- nodemon
 
 const express = require("express");
-const server = express();
-
-const cors = require("cors");
-server.use(cors()); //open for any request from any client
-
 const superagent = require("superagent");
-require("dotenv").config();
+const cors = require("cors");
 const pg = require("pg");
+require("dotenv").config();
+
+const server = express();
 const client = new pg.Client({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  // ssl: { rejectUnauthorized: false },
 });
+server.use(cors()); //open for any request from any client
 
 const PORT = process.env.PORT || 5000;
-// take the port from .env local file
-// If I am in the Heroku it will take the port from the .env file that inside the Heroku
-// 5000
-
-server.get("/data", (req, res) => {
-  res.status(200).send("Hi from the data page, I am the server !!!");
-});
 
 //////////////////// Location
 function Location(cityName, locData) {
@@ -35,32 +27,24 @@ function Location(cityName, locData) {
   this.latitude = locData[0].lat;
   this.longitude = locData[0].lon;
 }
+/////// Method 2 for lab08 >>> Method 1 is below, method 1 consume memory
 function getLocation(req, res) {
   //fetch the data that inside locaion.json file
   let cityName = req.query.city;
   if (!cityName) {
-    res.send("Put right url");
+    res.send(
+      "Put right url like this : https://abdullah-city-explorer-api.herokuapp.com/location?city=texas"
+    );
   } else {
-    let SQL1 = `SELECT * FROM locations;`;
+    let SQL1 = `SELECT * FROM locations WHERE search_query=$1;`;
     client
-      .query(SQL1)
+      .query(SQL1, [cityName])
       .then((result1) => {
-        let allCitiesInDb = result1.rows.map((element) => {
-          return element.search_query;
-        });
-
-        if (allCitiesInDb.includes(cityName)) {
-          let SQL2 = `SELECT * FROM locations WHERE search_query='${cityName}';`;
-          client
-            .query(SQL2)
-            .then((result2) => {
-              res.send(result2.rows);
-            })
-            .catch((error) => {
-              console.log(error);
-              res.send(error);
-            });
+        if (result1.rows.length) {
+          console.log("This from the Database");
+          res.send(result1.rows);
         } else {
+          console.log("This from the API");
           let key = process.env.GEOCODE_API_KEY;
           let locURL = `https://us1.locationiq.com/v1/search.php?key=${key}&q=${cityName}&format=json`;
           superagent
@@ -77,8 +61,8 @@ function getLocation(req, res) {
               ];
               client
                 .query(SQL3, safeValues)
-                .then((result) => {
-                  res.send(result.rows);
+                .then((result3) => {
+                  res.send(result3.rows);
                 })
                 .catch((error) => {
                   console.log(error);
@@ -97,7 +81,6 @@ function getLocation(req, res) {
       });
   }
 }
-
 server.get("/location", getLocation);
 
 //////////////////// Weather
@@ -108,9 +91,6 @@ function Weather(WeaData) {
 function getWeather(req, res) {
   //fetch the data that inside locaion.json file
   let cityName = req.query.search_query;
-  // res.send(cityName);
-
-  console.log(cityName);
   let key = process.env.WEATHER_API_KEY;
   let locURL = `https://api.weatherbit.io/v2.0/forecast/daily?city=${cityName}&days=8&key=${key}`;
   superagent
@@ -203,3 +183,67 @@ server.get("*", getGeneral);
 client.connect().then(() => {
   server.listen(PORT, () => console.log(`listening on ${PORT}`));
 });
+
+/////// Method 1 for lab08
+// function getLocation(req, res) {
+//   //fetch the data that inside locaion.json file
+//   let cityName = req.query.city;
+//   if (!cityName) {
+//     res.send("Put right url");
+//   } else {
+//     let SQL1 = `SELECT * FROM locations;`;
+//     client
+//       .query(SQL1)
+//       .then((result1) => {
+//         let allCitiesInDb = result1.rows.map((element) => {
+//           return element.search_query;
+//         });
+
+//         if (allCitiesInDb.includes(cityName)) {
+//           let SQL2 = `SELECT * FROM locations WHERE search_query='${cityName}';`;
+//           client
+//             .query(SQL2)
+//             .then((result2) => {
+//               res.send(result2.rows);
+//             })
+//             .catch((error) => {
+//               console.log(error);
+//               res.send(error);
+//             });
+//         } else {
+//           let key = process.env.GEOCODE_API_KEY;
+//           let locURL = `https://us1.locationiq.com/v1/search.php?key=${key}&q=${cityName}&format=json`;
+//           superagent
+//             .get(locURL) //send a request locatioIQ API
+//             .then((geoData) => {
+//               let gData = geoData.body;
+//               let locationData = new Location(cityName, gData);
+//               let SQL3 = `INSERT INTO locations (search_query,formatted_query,latitude,longitude) VALUES ($1,$2,$3,$4) RETURNING *;`;
+//               let safeValues = [
+//                 locationData.search_query,
+//                 locationData.formatted_query,
+//                 locationData.latitude,
+//                 locationData.longitude,
+//               ];
+//               client
+//                 .query(SQL3, safeValues)
+//                 .then((result) => {
+//                   res.send(result.rows);
+//                 })
+//                 .catch((error) => {
+//                   console.log(error);
+//                   res.send(error);
+//                 });
+//             })
+//             .catch((error) => {
+//               console.log(error);
+//               res.send(error);
+//             });
+//         }
+//       })
+//       .catch((error) => {
+//         console.log(error);
+//         res.send(error);
+//       });
+//   }
+// }
