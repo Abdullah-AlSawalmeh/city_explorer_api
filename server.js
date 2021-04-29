@@ -168,6 +168,67 @@ function addDataHandler(req, res) {
 }
 server.get("/add", addDataHandler);
 
+///////////////////// Movies
+function MVS(MVSData) {
+  this.title = MVSData.title;
+  this.overview = MVSData.overview;
+  this.average_votes = MVSData.vote_average;
+  this.total_votes = MVSData.vote_count;
+  this.image_url = MVSData.poster_path;
+  this.popularity = MVSData.popularity;
+  this.released_on = MVSData.release_date;
+}
+
+function moviesDataHandler(req, res) {
+  let cityName = req.query.search_query;
+  let key = process.env.MOVIE_API_KEY;
+  let locURL = `https://api.themoviedb.org/3/search/movie?api_key=${key}&query=${cityName}`;
+  // let locURL = `https://api.themoviedb.org/3/movie/top_rated/?region=${cityName}&api_key=${key}`;
+  superagent
+    .get(locURL) //send a request locatioIQ API
+    .then((mvsData) => {
+      let mData = mvsData.body;
+      console.log(mData);
+      const mvsObj = mData.results.map(function (element, i) {
+        return new MVS(element);
+      });
+      res.send(mvsObj);
+    })
+    .catch((error) => {
+      console.log(error);
+      res.send(error);
+    });
+}
+server.get("/movies", moviesDataHandler);
+///////////////////// Movies
+function YLP(YLPData) {
+  this.name = YLPData.name;
+  this.image_url = YLPData.image_url;
+  this.price = YLPData.price;
+  this.rating = YLPData.rating;
+  this.url = YLPData.url;
+}
+function yelpDataHandler(req, res) {
+  let cityName = req.query.search_query;
+  let key = process.env.YELP_API_KEY;
+  let pageNumber = req.query.page;
+  let limit = 5;
+  let offset = (pageNumber - 1) * limit + 1;
+  let url = `https://api.yelp.com/v3/businesses/search?location=${cityName}&limit=${limit}&offset=${offset}`;
+  superagent
+    .get(url)
+    .set("Authorization", `Bearer ${key}`)
+    .then((ylpData) => {
+      let yData = ylpData.body;
+      console.log(yData);
+      const yelpsObj = yData.businesses.map((element) => {
+        return new YLP(element);
+      });
+      res.send(yelpsObj);
+    });
+}
+server.get("/yelp", yelpDataHandler);
+
 //////////////////// general
 function getGeneral(req, res) {
   //fetch the data that inside locaion.json file
